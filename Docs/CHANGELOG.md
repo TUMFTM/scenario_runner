@@ -1,5 +1,5 @@
 ## Table of Contents
-* [Latest Changes](#latest-changes)
+* [CARLA ScenarioRunner 0.9.15](#carla-scenariorunner-0915)
 * [CARLA ScenarioRunner 0.9.13](#carla-scenariorunner-0913)
 * [CARLA ScenarioRunner 0.9.12](#carla-scenariorunner-0912)
 * [CARLA ScenarioRunner 0.9.11](#carla-scenariorunner-0911)
@@ -12,9 +12,15 @@
 * [CARLA ScenarioRunner 0.9.5](#carla-scenariorunner-095)
 * [CARLA ScenarioRunner 0.9.2](#carla-scenariorunner-092)
 
-## Latest changes
+## CARLA ScenarioRunner 0.9.15
 ### :rocket: New Features
-
+* Add waypoint reached threshold so that the precision of the actor reaching to waypoints can be adjusted based on object types.
+* OpenSCENARIO support:
+    - Added both init and story support for `EntityAction`
+    - Added story support for `TrafficSignalControllerAction`
+    - Added both init and story support for `LateralDistanceAction`
+    - Added support for `TrafficSignalControllerCondition`
+* Supported OpenSCENARIO 2.0 standard.
 * New scenarios:
     - InvadingTurn: vehicles at the opposite direction lane partially invade the ego's one, forcing it to leave space for them,moving slightly off-center.
     - EnterActorFlow: the ego has to enter a highway lane filled with incoming traffic
@@ -110,6 +116,7 @@
 * OpenSCENARIO support:
     - Added support for `ParameterAction`
     - Extended `ParameterCondition` support to use as an event trigger condition
+    - Added basic support for FollowTrajectoryAction. Currently only Polylines are supported
 
 ### :bug: Bug Fixes
 * Fixed metrics parsing and remade the example recordings

@@ -57,6 +57,8 @@ class AtomicCondition(py_trees.behaviour.Behaviour):
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
         self.name = name
 
+        self.blackboard = self.attach_blackboard_client(name=name)
+
     def setup(self, unused_timeout=15):
         """
         Default setup
@@ -75,6 +77,85 @@ class AtomicCondition(py_trees.behaviour.Behaviour):
         Default terminate. Can be extended in derived class
         """
         self.logger.debug("%s.terminate()[%s->%s]" % (self.__class__.__name__, self.status, new_status))
+
+
+class IfTriggerer(AtomicCondition):
+
+    def __init__(self, actor_ego, actor_npc, comparison_operator=operator.gt, name="IfTriggerer"):
+        super(IfTriggerer, self).__init__(name)
+        self.actor_ego = actor_ego
+        self.actor_npc = actor_npc
+        self._comparison_operator = comparison_operator
+
+    def initialise(self):
+        super(IfTriggerer, self).initialise()
+
+    def update(self):
+        ego_speed_now = CarlaDataProvider.get_velocity(self.actor_ego)
+        npc_speed_now = CarlaDataProvider.get_velocity(self.actor_npc)
+        new_status = py_trees.common.Status.RUNNING
+        if self._comparison_operator(ego_speed_now, npc_speed_now):
+            new_status = py_trees.common.Status.SUCCESS
+        else:
+            new_status = py_trees.common.Status.INVALID
+
+        return new_status
+
+
+class TimeOfWaitComparison(AtomicCondition):
+    def __init__(self, duration_time, name="TimeOfWaitComparison"):
+        super(TimeOfWaitComparison, self).__init__(name)
+        self._duration_time = duration_time
+        self._start_time = None
+
+    def initialise(self):
+        self._start_time = GameTime.get_time()
+        super(TimeOfWaitComparison, self).initialise()
+
+    def update(self):
+        new_status = py_trees.common.Status.RUNNING
+        _current_time = GameTime.get_time()
+        if _current_time - self._start_time > self._duration_time:
+            new_status = py_trees.common.Status.SUCCESS
+        return new_status
+
+
+class InTriggerNearCollision(AtomicCondition):
+    def __init__(self, reference_actor, actor, distance, comparison_operator=operator.lt,
+                 name="InTriggerNearCollision"):
+        """
+        Setup trigger distance
+        """
+        super(InTriggerNearCollision, self).__init__(name)
+        self.logger.debug("%s.__init__()" % self.__class__.__name__)
+        self._reference_actor = reference_actor
+        self._actor = actor
+        self._distance = distance
+        self._comparison_operator = comparison_operator
+        self._control = self._reference_actor.get_control()
+
+    def update(self):
+        """
+        Check if the ego vehicle is within trigger distance to other actor
+        """
+        new_status = py_trees.common.Status.RUNNING
+
+        location = CarlaDataProvider.get_location(self._actor)
+        reference_location = CarlaDataProvider.get_location(self._reference_actor)
+
+        if location is None or reference_location is None:
+            return new_status
+
+        if self._comparison_operator(calculate_distance(location, reference_location), self._distance):
+            new_status = py_trees.common.Status.SUCCESS
+            print("Too close, collision!")
+            self._control.throttle = 0
+            self._control.brake = 1
+            print('decelerate!!!')
+            self._reference_actor.apply_control(self._control)
+        self.logger.debug("%s.update()[%s->%s]" % (self.__class__.__name__, self.status, new_status))
+
+        return new_status
 
 
 class InTriggerDistanceToOSCPosition(AtomicCondition):
@@ -433,6 +514,8 @@ class TimeOfDayComparison(AtomicCondition):
         self._datetime = datetime.datetime.strptime(dattime, "%Y-%m-%dT%H:%M:%S")
         self._comparison_operator = comparison_operator
 
+        self.blackboard.register_key(key="Datetime", access=py_trees.common.Access.WRITE)
+
     def update(self):
         """
         Gets the time of day of the simulation and compares it with the reference one
@@ -445,7 +528,7 @@ class TimeOfDayComparison(AtomicCondition):
 
         try:
             check_dtime = operator.attrgetter("Datetime")
-            dtime = check_dtime(py_trees.blackboard.Blackboard())
+            dtime = check_dtime(self.blackboard)
         except AttributeError:
             pass
 
@@ -480,7 +563,12 @@ class OSCStartEndCondition(AtomicCondition):
         self._element_name = element_name
         self._rule = rule.upper()
         self._start_time = None
-        self._blackboard = py_trees.blackboard.Blackboard()
+
+        blackboard_variable_name = "({}){}-{}".format(self._element_type, self._element_name, self._rule)
+        self.blackboard.register_key(key=blackboard_variable_name, access=py_trees.common.Access.WRITE)
+
+        if not self.blackboard.exists(blackboard_variable_name):
+            self.blackboard.set(blackboard_variable_name, None, True)
 
     def initialise(self):
         """
@@ -497,7 +585,7 @@ class OSCStartEndCondition(AtomicCondition):
 
         if new_status == py_trees.common.Status.RUNNING:
             blackboard_variable_name = "({}){}-{}".format(self._element_type, self._element_name, self._rule)
-            element_start_time = self._blackboard.get(blackboard_variable_name)
+            element_start_time = self.blackboard.get(blackboard_variable_name)
             if element_start_time and element_start_time >= self._start_time:
                 new_status = py_trees.common.Status.SUCCESS
 
@@ -1237,6 +1325,73 @@ class WaitForTrafficLightState(AtomicCondition):
         return new_status
 
 
+class WaitForTrafficLightControllerState(AtomicCondition):
+
+    """
+    This class contains an atomic behavior to wait for a given traffic light
+    to have the desired state.
+
+    Args:
+        actor (carla.TrafficLight): CARLA traffic light to execute the condition
+        state (carla.TrafficLightState): State to be checked in this condition
+
+    The condition terminates with SUCCESS, when the traffic light switches to the desired state
+    """
+
+    def __init__(self, traffic_signal_id, state, duration, delay=None, ref_id=None,
+                 name="WaitForTrafficLightControllerState"):
+        """
+        Init
+        """
+        super(WaitForTrafficLightControllerState, self).__init__(name)
+        self.actor_id = traffic_signal_id
+        self._actor = None
+        self._start_time = None
+        self.duration_time = None
+        self.timeout = float(duration)
+        self.delay = float(delay) if delay else None
+        self.ref_tl_id = ref_id
+        self._state = state
+        self.logger.debug("%s.__init__()" % self.__class__.__name__)
+
+    def initialise(self):
+
+        self._actor = CarlaDataProvider.get_world().get_traffic_light_from_opendrive_id(self.actor_id)
+        if self._actor is None:
+            return py_trees.common.Status.FAILURE
+
+        if self.ref_tl_id is not None and self.delay is not None:
+            group_tl = self._actor.get_group_traffic_lights()
+            traffic_lights_id_list = [target_tl.id for target_tl in group_tl]
+            if self._actor.id not in traffic_lights_id_list:
+                return py_trees.common.Status.FAILURE
+            elapsed_time = self._actor.get_elapsed_time()
+            self.duration_time = self.delay + self.timeout + elapsed_time
+        elif self.ref_tl_id is None and self.delay is None:
+            self.duration_time = self.timeout
+        else:
+            return py_trees.common.Status.FAILURE
+
+    def update(self):
+        """
+        Set status to SUCCESS, when traffic light state matches the expected one
+        """
+        if self._actor is None:
+            return py_trees.common.Status.FAILURE
+
+        new_status = py_trees.common.Status.RUNNING
+        if self._actor.state == self._state:
+            if self._start_time is None:
+                self._start_time = GameTime.get_time()
+
+        if self._actor.state == self._state and GameTime.get_time() - self._start_time >= self.duration_time:
+            new_status = py_trees.common.Status.SUCCESS
+
+        self.logger.debug("%s.update()[%s->%s]" % (self.__class__.__name__, self.status, new_status))
+
+        return new_status
+
+
 class WaitEndIntersection(AtomicCondition):
 
     """
@@ -1294,15 +1449,15 @@ class WaitForBlackboardVariable(AtomicCondition):
         self._variable_value = variable_value
         self.logger.debug("%s.__init__()" % (self.__class__.__name__))
 
+        self.blackboard.register_key(key=variable_name, access=py_trees.common.Access.WRITE)
         if var_init_value is not None:
-            blackboard = py_trees.blackboard.Blackboard()
-            _ = blackboard.set(variable_name, var_init_value)
+            _ = self.blackboard.set(variable_name, var_init_value)
 
     def update(self):
 
         new_status = py_trees.common.Status.RUNNING
 
-        blackv = py_trees.blackboard.Blackboard()
+        blackv = self.blackboard
         value = blackv.get(self._variable_name)
         if value == self._variable_value:
             if self._debug:

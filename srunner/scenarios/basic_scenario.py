@@ -60,7 +60,7 @@ class BasicScenario(object):
         if not self.route_mode:
             # Only init env for route mode, avoid duplicate initialization during runtime
             self._initialize_environment(world)
-            
+
         self._initialize_actors(config)
 
         if CarlaDataProvider.is_runtime_init_mode():
@@ -71,18 +71,19 @@ class BasicScenario(object):
             world.wait_for_tick()
 
         # Main scenario tree
-        self.scenario_tree = py_trees.composites.Parallel(name, policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        self.scenario_tree = py_trees.composites.Parallel(name, policy=py_trees.common.ParallelPolicy.SuccessOnOne())
 
         # Add a trigger and end condition to the behavior to ensure it is only activated when it is relevant
-        self.behavior_tree = py_trees.composites.Sequence()
+        self.behavior_tree = py_trees.composites.Sequence('Sequence', True) # default values from: https://py-trees.readthedocs.io/_/downloads/en/release-2.1.x/pdf/
 
         trigger_behavior = self._setup_scenario_trigger(config)
         if trigger_behavior:
             self.behavior_tree.add_child(trigger_behavior)
 
         scenario_behavior = self._create_behavior()
-        self.behavior_tree.add_child(scenario_behavior)
-        self.behavior_tree.name = scenario_behavior.name
+        if scenario_behavior is not None:
+            self.behavior_tree.add_child(scenario_behavior)
+            self.behavior_tree.name = scenario_behavior.name
 
         end_behavior = self._setup_scenario_end(config)
         if end_behavior:
@@ -115,7 +116,7 @@ class BasicScenario(object):
                     criterion.terminate_on_failure = terminate_on_failure
 
                 self.criteria_tree = py_trees.composites.Parallel(name="Test Criteria",
-                                                                  policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ALL)
+                                                                  policy=py_trees.common.ParallelPolicy.SuccessOnAll())
                 self.criteria_tree.add_children(criteria)
                 self.criteria_tree.setup(timeout=1)
 
@@ -201,9 +202,9 @@ class BasicScenario(object):
             return None
 
         # Scenario is part of a route.
-        end_sequence = py_trees.composites.Sequence()
+        end_sequence = py_trees.composites.Sequence("end_sequence", True)
         name = "Reset Blackboard Variable: {} ".format(config.route_var_name)
-        end_sequence.add_child(py_trees.blackboard.SetBlackboardVariable(name, config.route_var_name, False))
+        end_sequence.add_child(py_trees.behaviours.SetBlackboardVariable(name, config.route_var_name, False, overwrite=True))
         end_sequence.add_child(WaitForever())  # scenario can't stop the route
 
         return end_sequence
@@ -282,7 +283,7 @@ class BasicScenario(object):
         more_nodes_exist = True
         while more_nodes_exist:
             more_nodes_exist = False
-            for node in node_list:
+            for node in list(node_list):
                 if node.children:
                     node_list.remove(node)
                     more_nodes_exist = True
@@ -308,13 +309,13 @@ class BasicScenario(object):
         # Cleanup all instantiated controllers
         actor_dict = {}
         try:
-            check_actors = operator.attrgetter("ActorsWithController")
-            actor_dict = check_actors(py_trees.blackboard.Blackboard())
-        except AttributeError:
+            actor_dict = py_trees.blackboard.Blackboard().get("ActorsWithController")
+        except KeyError:
             pass
         for actor_id in actor_dict:
             actor_dict[actor_id].reset()
-        py_trees.blackboard.Blackboard().set("ActorsWithController", {}, overwrite=True)
+        #py_trees.blackboard.Blackboard().unset("ActorsWithController")
+        py_trees.blackboard.Blackboard().set("ActorsWithController", {})
 
     def remove_all_actors(self):
         """

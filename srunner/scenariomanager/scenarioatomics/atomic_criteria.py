@@ -68,6 +68,8 @@ class Criterion(py_trees.behaviour.Behaviour):
 
         self.events = []  # List of events (i.e collision, sidewalk invasion...)
 
+        self.blackboard = self.attach_blackboard_client(name=name)
+
     def initialise(self):
         """
         Initialise the criterion. Can be extended by the user-derived class
@@ -437,6 +439,11 @@ class ActorBlockedTest(Criterion):
         self._active = True
         self.units = None  # We care about whether or not it fails, no units attached
 
+        self.blackboard.register_key(key="AC_SwitchActorBlockedTest", access=py_trees.common.Access.WRITE)
+        
+        if not self.blackboard.exists('AC_SwitchActorBlockedTest'):
+            self.blackboard.set('AC_SwitchActorBlockedTest', None, True)
+
     def update(self):
         """
         Check if the actor speed is above the min_speed
@@ -444,11 +451,11 @@ class ActorBlockedTest(Criterion):
         new_status = py_trees.common.Status.RUNNING
 
         # Deactivate/Activate checking by blackboard message
-        active = py_trees.blackboard.Blackboard().get('AC_SwitchActorBlockedTest')
+        active = self.blackboard.get('AC_SwitchActorBlockedTest')
         if active is not None:
             self._active = active
             self._time_last_valid_state = GameTime.get_time()
-            py_trees.blackboard.Blackboard().set("AC_SwitchActorBlockedTest", None, overwrite=True)
+            self.blackboard.set("AC_SwitchActorBlockedTest", None, overwrite=True)
 
         if self._active:
             linear_speed = CarlaDataProvider.get_velocity(self.actor)
@@ -1023,6 +1030,11 @@ class OutsideRouteLanesTest(Criterion):
 
         self._traffic_event = None
 
+        self.blackboard.register_key(key="AC_SwitchWrongDirectionTest", access=py_trees.common.Access.WRITE)
+
+        if not self.blackboard.exists('AC_SwitchWrongDirectionTest'):
+            self.blackboard.set('AC_SwitchWrongDirectionTest', None, True)
+
     def update(self):
         """
         Transforms the actor location and its four corners to waypoints. Depending on its types,
@@ -1040,10 +1052,10 @@ class OutsideRouteLanesTest(Criterion):
             return new_status
 
         # Deactivate / activate checking by blackboard message
-        active = py_trees.blackboard.Blackboard().get('AC_SwitchWrongDirectionTest')
+        active = self.blackboard.get('AC_SwitchWrongDirectionTest')
         if active is not None:
             self._wrong_direction_active = active
-            py_trees.blackboard.Blackboard().set("AC_SwitchWrongDirectionTest", None, overwrite=True)
+            self.blackboard.set("AC_SwitchWrongDirectionTest", None, overwrite=True)
 
         self._is_outside_driving_lanes(location)
         self._is_at_wrong_lane(location)
@@ -1431,8 +1443,10 @@ class InRouteTest(Criterion):
             self._accum_meters.append(d + accum)
             prev_loc = loc
 
+
+        self.blackboard.register_key(key="InRoute", access=py_trees.common.Access.WRITE)
         # Blackboard variable
-        blackv = py_trees.blackboard.Blackboard()
+        blackv = self.blackboard
         _ = blackv.set("InRoute", True)
 
     def update(self):
@@ -1488,7 +1502,7 @@ class InRouteTest(Criterion):
 
             if off_route:
                 # Blackboard variable
-                blackv = py_trees.blackboard.Blackboard()
+                blackv = self.blackboard
                 _ = blackv.set("InRoute", False)
 
                 route_deviation_event = TrafficEvent(event_type=TrafficEventType.ROUTE_DEVIATION, frame=GameTime.get_frame())
@@ -2172,6 +2186,11 @@ class ScenarioTimeoutTest(Criterion):
         self.actual_value = 0
         self._scenario_name = scenario_name
 
+        self.blackboard.register_key(key=f"ScenarioTimeout_{self._scenario_name}", access=py_trees.common.Access.WRITE)
+
+        if not self.blackboard.exists(f"ScenarioTimeout_{self._scenario_name}"):
+            self.blackboard.set(f"ScenarioTimeout_{self._scenario_name}", None, True)
+
     def update(self):
         """wait"""
         new_status = py_trees.common.Status.RUNNING
@@ -2183,7 +2202,7 @@ class ScenarioTimeoutTest(Criterion):
 
         blackboard_name = f"ScenarioTimeout_{self._scenario_name}"
 
-        timeout = py_trees.blackboard.Blackboard().get(blackboard_name)
+        timeout = self.blackboard.get(blackboard_name)
         if timeout:
             self.actual_value = 1
             self.test_status = "FAILURE"
@@ -2191,6 +2210,6 @@ class ScenarioTimeoutTest(Criterion):
             traffic_event = TrafficEvent(event_type=TrafficEventType.SCENARIO_TIMEOUT, frame=GameTime.get_frame())
             traffic_event.set_message("Agent timed out a scenario")
             self.events.append(traffic_event)
-        py_trees.blackboard.Blackboard().set(blackboard_name, None, True)
+        self.blackboard.set(blackboard_name, None, True)
 
         super().terminate(new_status)

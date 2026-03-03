@@ -121,12 +121,17 @@ class VehicleOpensDoorTwoWays(BasicScenario):
             raise ValueError("Couldn't find a spot to place the adversary vehicle")
         elif len(front_wps) > 1:
             print("WARNING: Found a diverging lane. Choosing one at random")
-        self._front_wp = front_wps[0]
+        for front_wp in front_wps:
 
-        if self._direction == 'left':
-            self._parked_wp = self._front_wp.get_left_lane()
-        else:
-            self._parked_wp = self._front_wp.get_right_lane()
+            self._front_wp = front_wp
+
+            if self._direction == 'left':
+                self._parked_wp = self._front_wp.get_left_lane()
+            else:
+                self._parked_wp = self._front_wp.get_right_lane()
+
+            if self._parked_wp is not None:
+                break
 
         if self._parked_wp is None:
             raise ValueError("Couldn't find a spot to place the adversary vehicle")
@@ -155,21 +160,21 @@ class VehicleOpensDoorTwoWays(BasicScenario):
         if not reference_wp:
             raise ValueError("Couldnt find a left lane to spawn the opposite traffic")
 
-        root = py_trees.composites.Sequence(name="VehicleOpensDoorTwoWays")
+        root = py_trees.composites.Sequence("VehicleOpensDoorTwoWays", True)
         if self.route_mode:
             total_dist = self._parked_distance + 20
             root.add_child(LeaveSpaceInFront(total_dist))
 
-        end_condition = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        end_condition = py_trees.composites.Parallel(policy=py_trees.common.ParallelPolicy.SuccessOnOne(), name="EndOpenDoor")
         end_condition.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         end_condition.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._end_wp.transform, False))
 
-        behavior = py_trees.composites.Sequence(name="Main Behavior")
+        behavior = py_trees.composites.Sequence("Main Behavior", True)
 
         # Wait until ego is close to the adversary
         collision_location = self._front_wp.transform.location
         trigger_adversary = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="TriggerOpenDoor")
+            policy=py_trees.common.ParallelPolicy.SuccessOnOne(), name="TriggerOpenDoor")
         trigger_adversary.add_child(InTimeToArrivalToLocation(
             self.ego_vehicles[0], self._reaction_time, collision_location))
         trigger_adversary.add_child(InTriggerDistanceToLocation(

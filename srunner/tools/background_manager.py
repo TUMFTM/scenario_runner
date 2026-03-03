@@ -32,9 +32,10 @@ class ChangeRoadBehavior(AtomicBehavior):
         self._spawn_dist = spawn_dist
         self._extra_space = extra_space
         super().__init__(name)
+        self.blackboard.register_key(key="BA_ChangeRoadBehavior", access=py_trees.common.Access.WRITE)
 
     def update(self):
-        py_trees.blackboard.Blackboard().set(
+        self.blackboard.set(
             "BA_ChangeRoadBehavior", [self._num_front, self._num_back, self._spawn_dist, self._extra_space], overwrite=True
         )
         return py_trees.common.Status.SUCCESS
@@ -55,9 +56,10 @@ class ChangeOppositeBehavior(AtomicBehavior):
         self._spawn_dist = spawn_dist
         self._active = active
         super().__init__(name)
+        self.blackboard.register_key(key="BA_ChangeOppositeBehavior", access=py_trees.common.Access.WRITE)
 
     def update(self):
-        py_trees.blackboard.Blackboard().set(
+        self.blackboard.set(
             "BA_ChangeOppositeBehavior", [self._source_dist, self._spawn_dist, self._active], overwrite=True
         )
         return py_trees.common.Status.SUCCESS
@@ -79,9 +81,10 @@ class ChangeJunctionBehavior(AtomicBehavior):
         self._max_actors = max_actors
         self._perc = source_perc
         super().__init__(name)
+        self.blackboard.register_key(key="BA_ChangeJunctionBehavior", access=py_trees.common.Access.WRITE)
 
     def update(self):
-        py_trees.blackboard.Blackboard().set(
+        self.blackboard.set(
             "BA_ChangeJunctionBehavior", [self._source_dist, self._spawn_dist, self._max_actors, self._perc], overwrite=True
         )
         return py_trees.common.Status.SUCCESS
@@ -95,9 +98,10 @@ class SetMaxSpeed(AtomicBehavior):
     def __init__(self, max_speed, name="SetMaxSpeed"):
         self._max_speed = max_speed
         super().__init__(name)
+        self.blackboard.register_key(key="BA_SetMaxSpeed", access=py_trees.common.Access.WRITE)
 
     def update(self):
-        py_trees.blackboard.Blackboard().set("BA_SetMaxSpeed", self._max_speed, overwrite=True)
+        self.blackboard.set("BA_SetMaxSpeed", self._max_speed, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -109,9 +113,10 @@ class StopFrontVehicles(AtomicBehavior):
 
     def __init__(self, name="StopFrontVehicles"):
         super().__init__(name)
+        self.blackboard.register_key(key="BA_StopFrontVehicles", access=py_trees.common.Access.WRITE)
 
     def update(self):
-        py_trees.blackboard.Blackboard().set("BA_StopFrontVehicles", True, overwrite=True)
+        self.blackboard.set("BA_StopFrontVehicles", True, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -123,9 +128,10 @@ class StartFrontVehicles(AtomicBehavior):
 
     def __init__(self, name="StartFrontVehicles"):
         super().__init__(name)
+        self.blackboard.register_key(key="BA_StartFrontVehicles", access=py_trees.common.Access.WRITE)
 
     def update(self):
-        py_trees.blackboard.Blackboard().set("BA_StartFrontVehicles", True, overwrite=True)
+        self.blackboard.set("BA_StartFrontVehicles", True, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -136,10 +142,11 @@ class StopBackVehicles(AtomicBehavior):
     """
     def __init__(self, name="StopBackVehicles"):
         super().__init__(name)
+        self.blackboard.register_key(key="BA_StopBackVehicles", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_StopBackVehicles", True, overwrite=True)
+        self.blackboard.set("BA_StopBackVehicles", True, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -149,10 +156,11 @@ class StartBackVehicles(AtomicBehavior):
     """
     def __init__(self, name="StartBackVehicles"):
         super().__init__(name)
+        self.blackboard.register_key(key="BA_StartBackVehicles", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_StartBackVehicles", True, overwrite=True)
+        self.blackboard.set("BA_StartBackVehicles", True, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -164,10 +172,11 @@ class LeaveSpaceInFront(AtomicBehavior):
     def __init__(self, space, name="LeaveSpaceInFront"):
         self._space = space
         super().__init__(name)
+        self.blackboard.register_key(key="BA_LeaveSpaceInFront", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_LeaveSpaceInFront", [self._space], overwrite=True)
+        self.blackboard.set("BA_LeaveSpaceInFront", [self._space], overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -178,10 +187,11 @@ class SwitchRouteSources(AtomicBehavior):
     def __init__(self, enabled=True, name="SwitchRouteSources"):
         self._enabled = enabled
         super().__init__(name)
+        self.blackboard.register_key(key="BA_SwitchRouteSources", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_SwitchRouteSources", self._enabled, overwrite=True)
+        self.blackboard.set("BA_SwitchRouteSources", self._enabled, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -197,10 +207,11 @@ class RemoveRoadLane(AtomicBehavior):
     def __init__(self, lane_wp, name="RemoveRoadLane"):
         self._lane_wp = lane_wp
         super().__init__(name)
+        self.blackboard.register_key(key="BA_RemoveRoadLane", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_RemoveRoadLane", self._lane_wp, overwrite=True)
+        self.blackboard.set("BA_RemoveRoadLane", self._lane_wp, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -215,10 +226,11 @@ class ReAddRoadLane(AtomicBehavior):
     def __init__(self, offset, name="BA_ReAddRoadLane"):
         self._offset = offset
         super().__init__(name)
+        self.blackboard.register_key(key="BA_ReAddRoadLane", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_ReAddRoadLane", self._offset, overwrite=True)
+        self.blackboard.set("BA_ReAddRoadLane", self._offset, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -230,10 +242,11 @@ class LeaveSpaceInFront(AtomicBehavior):
     def __init__(self, space, name="LeaveSpaceInFront"):
         self._space = space
         super().__init__(name)
+        self.blackboard.register_key(key="BA_LeaveSpaceInFront", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_LeaveSpaceInFront", self._space, overwrite=True)
+        self.blackboard.set("BA_LeaveSpaceInFront", self._space, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 
@@ -245,10 +258,11 @@ class LeaveCrossingSpace(AtomicBehavior):
     def __init__(self, collision_wp, name="LeaveCrossingSpace"):
         self._collision_wp = collision_wp
         super().__init__(name)
+        self.blackboard.register_key(key="BA_LeaveCrossingSpace", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set("BA_LeaveCrossingSpace", self._collision_wp, overwrite=True)
+        self.blackboard.set("BA_LeaveCrossingSpace", self._collision_wp, overwrite=True)
         return py_trees.common.Status.SUCCESS
 
 class HandleJunctionScenario(AtomicBehavior):
@@ -275,10 +289,11 @@ class HandleJunctionScenario(AtomicBehavior):
         self._stop_entries = stop_entries
         self._extend_road_exit = extend_road_exit
         super().__init__(name)
+        self.blackboard.register_key(key="BA_HandleJunctionScenario", access=py_trees.common.Access.WRITE)
 
     def update(self):
         """Updates the blackboard and succeds"""
-        py_trees.blackboard.Blackboard().set(
+        self.blackboard.set(
             "BA_HandleJunctionScenario",
             [self._clear_junction, self._clear_ego_entry, self._remove_entries,
              self._remove_exits, self._stop_entries, self._extend_road_exit],

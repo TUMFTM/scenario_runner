@@ -105,8 +105,8 @@ class EnterActorFlow(BasicScenario):
         source_wps = get_same_dir_lanes(source_wp)
         sink_wps = get_same_dir_lanes(sink_wp)
 
-        root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+        root = py_trees.composites.Sequence(
+            memory=True, name="EnterActorFlow")
 
         for source_wp, sink_wp in zip(source_wps, sink_wps):
             root.add_child(InTriggerDistanceToLocation(self.ego_vehicles[0], sink_wp.transform.location, self._sink_distance))
@@ -115,7 +115,7 @@ class EnterActorFlow(BasicScenario):
                 self._flow_speed, initial_actors=True, initial_junction=True))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
-        sequence = py_trees.composites.Sequence()
+        sequence = py_trees.composites.Sequence("sequence", True)
         if self.route_mode:
             grp = CarlaDataProvider.get_global_route_planner()
             route = grp.trace_route(source_wp.transform.location, sink_wp.transform.location)
@@ -174,7 +174,8 @@ class EnterActorFlowV2(EnterActorFlow):
         sink_wps = get_same_dir_lanes(sink_wp)
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            name="EnterActorFlowV2Root",
+            policy=py_trees.common.ParallelPolicy.SuccessOnOne())
         root.add_child(ActorFlow(
                 source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
                 self._flow_speed, initial_actors=True, initial_junction=True))
@@ -195,7 +196,7 @@ class EnterActorFlowV2(EnterActorFlow):
                 if current_wp.is_junction:
                     break
 
-            sequence_2 = py_trees.composites.Sequence()
+            sequence_2 = py_trees.composites.Sequence("sequence_2", True)
             sequence_2.add_child(WaitEndIntersection(self.ego_vehicles[0]))
             sequence_2.add_child(HandleJunctionScenario(
                 clear_junction=False,
@@ -208,7 +209,7 @@ class EnterActorFlowV2(EnterActorFlow):
             sequence_2.add_child(WaitForever())
             root.add_child(sequence_2)
 
-        sequence = py_trees.composites.Sequence()
+        sequence = py_trees.composites.Sequence("sequence", True)
         if self.route_mode:
             sequence.add_child(HandleJunctionScenario(
                 clear_junction=False,
@@ -280,14 +281,15 @@ class HighwayExit(BasicScenario):
                 break
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            name="HighwayExitRoot",
+            policy=py_trees.common.ParallelPolicy.SuccessOnOne())
         root.add_child(ActorFlow(
             source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
             self._flow_speed, initial_actors=True, initial_junction=True))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         root.add_child(WaitEndIntersection(self.ego_vehicles[0], junction_id))
 
-        sequence = py_trees.composites.Sequence()
+        sequence = py_trees.composites.Sequence("sequence", True)
 
         if self.route_mode:
             sequence.add_child(RemoveRoadLane(source_wp))
@@ -363,7 +365,8 @@ class MergerIntoSlowTraffic(BasicScenario):
         sink_wps = get_same_dir_lanes(sink_wp)
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            name="MergerIntoSlowTraffic",
+            policy=py_trees.common.ParallelPolicy.SuccessOnOne())
         for wp in sink_wps:
             root.add_child(InTriggerDistanceToLocation(self.ego_vehicles[0], wp.transform.location, self._sink_distance))
         root.add_child(ActorFlow(
@@ -371,7 +374,7 @@ class MergerIntoSlowTraffic(BasicScenario):
             self._flow_speed, initial_actors=True, initial_junction=True))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
-        sequence = py_trees.composites.Sequence()
+        sequence = py_trees.composites.Sequence("sequence", True)
         if self.route_mode:
 
             grp = CarlaDataProvider.get_global_route_planner()
@@ -430,7 +433,8 @@ class MergerIntoSlowTrafficV2(MergerIntoSlowTraffic):
         sink_wps = get_same_dir_lanes(sink_wp)
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            name="MergerIntoSlowTrafficRoot",
+            policy=py_trees.common.ParallelPolicy.SuccessOnOne())
         root.add_child(ActorFlow(
             source_wp, sink_wp, self._source_dist_interval, self._sink_distance,
             self._flow_speed, initial_actors=True, initial_junction=True))
@@ -451,7 +455,7 @@ class MergerIntoSlowTrafficV2(MergerIntoSlowTraffic):
                 if current_wp.is_junction:
                     break
 
-        sequence_2 = py_trees.composites.Sequence()
+        sequence_2 = py_trees.composites.Sequence("sequence_2", True)
         sequence_2.add_child(WaitEndIntersection(self.ego_vehicles[0]))
         sequence_2.add_child(HandleJunctionScenario(
             clear_junction=False,
@@ -464,7 +468,7 @@ class MergerIntoSlowTrafficV2(MergerIntoSlowTraffic):
         sequence_2.add_child(WaitForever())
         root.add_child(sequence_2)
 
-        sequence = py_trees.composites.Sequence()
+        sequence = py_trees.composites.Sequence("sequence", True)
         if self.route_mode:
             sequence.add_child(HandleJunctionScenario(
                 clear_junction=False,
@@ -570,13 +574,14 @@ class InterurbanActorFlow(BasicScenario):
         """
 
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            name="InterurbanActorFlowRoot",
+            policy=py_trees.common.ParallelPolicy.SuccessOnOne())
         root.add_child(ActorFlow(
             self._source_wp, self._sink_wp, self._source_dist_interval, self._sink_distance, self._flow_speed))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
         root.add_child(WaitEndIntersection(self.ego_vehicles[0]))
 
-        sequence = py_trees.composites.Sequence()
+        sequence = py_trees.composites.Sequence("sequence", True)
 
         if self.route_mode:
             sequence.add_child(HandleJunctionScenario(
@@ -731,7 +736,8 @@ class InterurbanAdvancedActorFlow(BasicScenario):
         the ego vehicle mergers into a slow traffic flow from the freeway entrance.
         """
         root = py_trees.composites.Parallel(
-            policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE)
+            name="InterurbanAdvancedActorFlowRoot",
+            policy=py_trees.common.ParallelPolicy.SuccessOnOne())
         root.add_child(WaitUntilInFrontPosition(self.ego_vehicles[0], self._sink_wp_2.transform))
         root.add_child(ActorFlow(
             self._source_wp_1, self._sink_wp_1, self._source_dist_interval, self._sink_distance, self._flow_speed))
@@ -739,7 +745,7 @@ class InterurbanAdvancedActorFlow(BasicScenario):
             self._source_wp_2, self._sink_wp_2, self._source_dist_interval, self._sink_distance, self._flow_speed))
         root.add_child(ScenarioTimeout(self._scenario_timeout, self.config.name))
 
-        sequence = py_trees.composites.Sequence()
+        sequence = py_trees.composites.Sequence("sequence", True)
         if self.route_mode:
 
             sequence.add_child(HandleJunctionScenario(
