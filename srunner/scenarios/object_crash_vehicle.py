@@ -413,7 +413,7 @@ class ParkingCrossingPedestrian(BasicScenario):
             raise ValueError(f"'direction' must be either 'right' or 'left' but {self._direction} was given")
 
         # Time the agent has to react to avoid the collision [s]
-        self._reaction_time = 2.15
+        self._reaction_time = 3.45
         self._reaction_time += 0.1 * floor(self._crossing_angle / 5)
 
         super().__init__("ParkingCrossingPedestrian",
